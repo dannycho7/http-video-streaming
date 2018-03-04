@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use((req, res, next) => {
 	console.log("Request: ", req.url);
@@ -38,4 +39,4 @@ app.get("/:video_id/:filename", (req, res) => {
 	fs.createReadStream(file_path, { start, end }).pipe(res);
 });
 
-app.listen(5000, () => console.log("Server listening in on port 5000"));
+app.listen(PORT, () => console.log(`Server listening in on port ${PORT}`));
