@@ -17,6 +17,7 @@ app.get("/video", (req, res) => {
 
 	let chunkSize = end - start + 1;
 	let head = {
+		"Transfer-Encoding": "chunked",
 		"Content-Range": `bytes ${start}-${end}/${fileSize}`,
 		"Accept-Ranges": "bytes",
 		"Content-Length": chunkSize,
