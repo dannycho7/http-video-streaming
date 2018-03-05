@@ -7,6 +7,21 @@
 	<video id="videoPlayer" width="600" height="400" controls></video>
 </body>
 	<script type="text/javascript">
+		function Queue() {
+			this.data = [];
+			this.pipingToSourceBuffer = false;
+			this.push = function(el) {
+				this.data.push(el)
+			}
+
+			this.popFirst = function() {
+				let buf = this.data[0];
+				this.data.shift();
+				return buf;
+			}
+		}
+
+
 		var player = document.getElementById("videoPlayer");
 
 		player.addEventListener("error", (err) => console.log(err));
@@ -16,22 +31,24 @@
 			console.log("Source opened", this);
 
 			var videoSourceBuffer = this.addSourceBuffer('video/webm; codecs="vp9"');
+			var audioSourceBuffer = this.addSourceBuffer('audio/webm; codecs="vorbis"')
 
-			let videoBuffer = [];
-			let queue = [];
-			let addingFromQueue = false;
-			let count = 0;
+			let audioQueue = new Queue();
+			let videoQueue = new Queue();
 
-			function appendBufFromQueue(srcBuffer) {
-				addingFromQueue = true;
-				let buf = queue[0];
-				queue.shift();
+			function appendBufFromQueue(srcBuffer, queue) {
+				queue.pipingToSourceBuffer = true;
+				let buf = queue.popFirst();
 
 				return Boolean(buf) && (srcBuffer.appendBuffer(buf) || true);
 			}
 
 			videoSourceBuffer.addEventListener("updateend", function() {
-				if(!appendBufFromQueue(this)) addingFromQueue = false;
+				if(!appendBufFromQueue(this, videoQueue)) videoQueue.pipingToSourceBuffer = false;
+			});
+
+			audioSourceBuffer.addEventListener("updateend", function() {
+				if(!appendBufFromQueue(this, audioQueue)) audioQueue.pipingToSourceBuffer = false;
 			});
 
 			fetch("/seyeon/1280x720_1500k.webm", {
@@ -45,29 +62,38 @@
 				(function readData() {
 					reader.read()
 					.then((buffer) => {
-						queue.push(buffer.value);
-						if(!videoSourceBuffer.updating && !addingFromQueue) {
-							console.log("called: ", videoSourceBuffer, addingFromQueue);
-							appendBufFromQueue(videoSourceBuffer);
+						videoQueue.push(buffer.value);
+						if(!videoQueue.pipingToSourceBuffer) {
+							console.log("called: ", videoSourceBuffer, videoQueue.pipingToSourceBuffer);
+							appendBufFromQueue(videoSourceBuffer, videoQueue);
 						}
 
 						if(!buffer.done) readData();
 					});
 				})()
 			});
-/*
-			var xhttp = new XMLHttpRequest();
-			xhttp.addEventListener("load", function() {
-				console.log("Received response", this.response);
-				videoSourceBuffer.appendBuffer(this.response);
+
+			fetch("/seyeon/audio.webm", {
+				headers: {
+					range: "0-"
+				}
+			})
+			.then((response) => {
+				var reader = response.body.getReader();
+				
+				(function readData() {
+					reader.read()
+					.then((buffer) => {
+						audioQueue.push(buffer.value);
+						if(!audioQueue.pipingToSourceBuffer) {
+							console.log("called: ", audioSourceBuffer, audioQueue.pipingToSourceBuffer);
+							appendBufFromQueue(audioSourceBuffer, audioQueue);
+						}
+
+						if(!buffer.done) readData();
+					});
+				})()
 			});
-
-			xhttp.open("GET", "/seyeon/1280x720_1500k.webm");
-
-			xhttp.setRequestHeader("range", "0-");
-			xhttp.responseType = "arraybuffer";
-			xhttp.send();
-*/
 		});
 
 		player.src = URL.createObjectURL(mse);
