@@ -2,19 +2,74 @@
 <html>
 <head>
 	<title>HTTP Video</title>
-	<link href="https://vjs.zencdn.net/6.6.3/video-js.css" rel="stylesheet">
-	<script src="https://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script>
-	<script src="https://vjs.zencdn.net/6.6.3/video.js"></script>
-	<script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/2.9.2/videojs-dash.min.js"></script>
 </head>
 <body>
-	<video id="videoPlayer" class="video-js" width="600" height="400" controls preload="auto"></video>
-
+	<video id="videoPlayer" width="600" height="400" controls></video>
 </body>
 	<script type="text/javascript">
-		var player = videojs('videoPlayer');
-		player.src({ src: '/seyeon/manifest.mpd', type: 'application/dash+xml'});
-		player.play();
+		var player = document.getElementById("videoPlayer");
+
+		player.addEventListener("error", (err) => console.log(err));
+
+		var mse = new (window.MediaSource || window.WebKitMediaSource());
+		mse.addEventListener("sourceopen", function (evt) {
+			console.log("Source opened", this);
+
+			var videoSourceBuffer = this.addSourceBuffer('video/webm; codecs="vp9"');
+
+			let videoBuffer = [];
+			let queue = [];
+			let addingFromQueue = false;
+			let count = 0;
+
+			function appendBufFromQueue(srcBuffer) {
+				addingFromQueue = true;
+				let buf = queue[0];
+				queue.shift();
+
+				return Boolean(buf) && (srcBuffer.appendBuffer(buf) || true);
+			}
+
+			videoSourceBuffer.addEventListener("updateend", function() {
+				if(!appendBufFromQueue(this)) addingFromQueue = false;
+			});
+
+			fetch("/seyeon/1280x720_1500k.webm", {
+				headers: {
+					range: "0-"
+				}
+			})
+			.then((response) => {
+				var reader = response.body.getReader();
+				
+				(function readData() {
+					reader.read()
+					.then((buffer) => {
+						queue.push(buffer.value);
+						if(!videoSourceBuffer.updating && !addingFromQueue) {
+							console.log("called: ", videoSourceBuffer, addingFromQueue);
+							appendBufFromQueue(videoSourceBuffer);
+						}
+
+						if(!buffer.done) readData();
+					});
+				})()
+			});
+/*
+			var xhttp = new XMLHttpRequest();
+			xhttp.addEventListener("load", function() {
+				console.log("Received response", this.response);
+				videoSourceBuffer.appendBuffer(this.response);
+			});
+
+			xhttp.open("GET", "/seyeon/1280x720_1500k.webm");
+
+			xhttp.setRequestHeader("range", "0-");
+			xhttp.responseType = "arraybuffer";
+			xhttp.send();
+*/
+		});
+
+		player.src = URL.createObjectURL(mse);
 	</script>
 </html>
