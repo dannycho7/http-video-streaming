@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node bin/server.js"
+    "start": "npm run build-player && node bin/server.js",
+    "build-player": "browserify player/main.js -o public/player-bundle.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   },
   "homepage": "https://github.com/dannycho7/http-video-streaming#readme",
   "dependencies": {
+    "browserify": "^16.1.1",
     "express": "^4.16.2"
   }
 }
