@@ -13,14 +13,27 @@ class ManifestParser {
 
 		let representations = adaptationSet.children;
 
+		let timestampPromises = [];
+
 		for (let i = 0; i < representations.length; i++) {
 			let representationObj = {};
-			representationObj.url = `/${this.video_id}/${this.getUrl(representations[i])}`
-
 			adaptSetObj.representations[i] = representationObj;
+			representationObj["url"] = `/${this.video_id}/${this.getUrl(representations[i])}`;
+
+			let timestampPromise = new Promise((res, rej) => {
+				fetch(`/${this.video_id}/timestamps/${this.getUrl(representations[i])}.json`)
+				.then((response) => response.json())
+				.then((timestamp_info) => {
+					representationObj["timestamp_info"] = timestamp_info;
+					res();
+				});
+			});
+			
+			timestampPromises.push(timestampPromise);
 		}
 
-		return adaptSetObj;
+		return Promise.all(timestampPromises)
+		.then(() => adaptSetObj);
 	}
 
 	getUrl(representation) {
@@ -43,12 +56,22 @@ class ManifestParser {
 
 				window.manifest = manifest;
 
+				let adaptationConversionPromises = [];
+
 				let adaptSetsObj = {};
 				for (let i = 0; i < adaptationSets.length; i++) {
-					adaptSetsObj[adaptationSets[i].getAttribute("mimeType")] = this.adaptationSetToJSON(adaptationSets[i]);
+					let adaptationPromise = new Promise((resAdapt, rejAdapt) => {
+						this.adaptationSetToJSON(adaptationSets[i])
+						.then((adaptation_json) => {
+							adaptSetsObj[adaptationSets[i].getAttribute("mimeType")] = adaptation_json;
+							resAdapt();
+						});
+					})
+					adaptationConversionPromises.push(adaptationPromise);
 				}
 
-				resolve(adaptSetsObj);
+				Promise.all(adaptationConversionPromises)
+				.then(() => resolve(adaptSetsObj));
 			});
 		});
 	}
