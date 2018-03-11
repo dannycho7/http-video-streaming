@@ -1,6 +1,7 @@
 #! /bin/bash
 
 EXEC_NAME=$( dirname $0 )"/ffmpeg.exe"
+EXEC_JSON_MANIFEST=$( dirname $0 )"/mse_json_manifest"
 FILE_PATH=$1
 OUTPUT_PATH_PREFIX=$2
 
@@ -16,14 +17,19 @@ EXEC_WITH_INPUT="${EXEC_NAME} -i ${FILE_PATH}"
 # generate audio
 ${EXEC_WITH_INPUT} -vn -acodec libvorbis -ab 128k -dash 1 ${OUTPUT_PATH_PREFIX}/audio.webm
 
-
-${EXEC_WITH_INPUT} -c:v libvpx-vp9 -keyint_min 150 \
--g 150 -tile-columns 4 -frame-parallel 1  -f webm -dash 1 \
--an -vf scale=160:190 -b:v 250k -dash 1 ${OUTPUT_PATH_PREFIX}/160x90_250k.webm \
+${EXEC_WITH_INPUT} -c:v libvpx-vp9 -f webm -dash 1 \
+-an -vf scale=160:90 -b:v 250k -dash 1 ${OUTPUT_PATH_PREFIX}/160x90_250k.webm \
 -an -vf scale=320:180 -b:v 500k -dash 1 ${OUTPUT_PATH_PREFIX}/320x180_500k.webm \
 -an -vf scale=640:360 -b:v 750k -dash 1 ${OUTPUT_PATH_PREFIX}/640x360_750k.webm \
--an -vf scale=640:360 -b:v 1000k -dash 1 ${OUTPUT_PATH_PREFIX}/640x360_1000k.webm \
--an -vf scale=1280:720 -b:v 1500k -dash 1 ${OUTPUT_PATH_PREFIX}/1280x720_1500k.webm
+# -an -vf scale=640:360 -b:v 1000k -dash 1 ${OUTPUT_PATH_PREFIX}/640x360_1000k.webm \
+# -an -vf scale=1280:720 -b:v 1500k -dash 1 ${OUTPUT_PATH_PREFIX}/1280x720_1500k.webm
+
+mkdir -p ${OUTPUT_PATH_PREFIX}/timestamps
+
+${EXEC_JSON_MANIFEST} ${OUTPUT_PATH_PREFIX}/160x90_250k.webm > ${OUTPUT_PATH_PREFIX}/timestamps/160x90_250k.webm.json
+${EXEC_JSON_MANIFEST} ${OUTPUT_PATH_PREFIX}/320x180_500k.webm > ${OUTPUT_PATH_PREFIX}/timestamps/320x180_500k.webm.json
+${EXEC_JSON_MANIFEST} ${OUTPUT_PATH_PREFIX}/640x360_750k.webm > ${OUTPUT_PATH_PREFIX}/timestamps/640x360_750k.webm.json
+${EXEC_JSON_MANIFEST} ${OUTPUT_PATH_PREFIX}/audio.webm > ${OUTPUT_PATH_PREFIX}/timestamps/audio.webm.json
 
 ${EXEC_NAME} \
 -f webm_dash_manifest -i ${OUTPUT_PATH_PREFIX}/160x90_250k.webm \

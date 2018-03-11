@@ -51,15 +51,27 @@ mse.addEventListener("sourceopen", function (evt) {
 			if(!appendBufFromQueue(this, audioQueue)) audioQueue.pipingToSourceBuffer = false;
 		});
 
-		fetch(adaptSetsObj["video/webm"]["representations"][2]["url"], {
+		fetch("/seyeon/160x90_250k.webm", {
 			headers: {
-				range: "0-"
+				range: "0-108060"
 			}
 		})
 		.then((response) => {
 			var reader = response.body.getReader();
 			readData(reader, videoQueue, videoSourceBuffer);
 		});
+
+		setTimeout(() => {
+			fetch("/seyeon/640x360_750k.webm", {
+				headers: {
+					range: "369427-730406"
+				}
+			})
+			.then((response) => {
+				var reader = response.body.getReader();
+				readData(reader, videoQueue, videoSourceBuffer);
+			});
+		}, 2000);
 
 		fetch(adaptSetsObj["audio/webm"]["representations"][0]["url"], {
 			headers: {

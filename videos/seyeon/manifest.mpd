@@ -8,13 +8,13 @@
   minBufferTime="PT1S"
   profiles="urn:webm:dash:profile:webm-on-demand:2012">
 <Period id="0" start="PT0S" duration="PT14.979S" >
-<AdaptationSet id="0" mimeType="video/webm" codecs="vp9" bitstreamSwitching="true" subsegmentAlignment="false" subsegmentStartsWithSAP="1">
-<Representation id="0" bandwidth="197978" width="160" height="190">
+<AdaptationSet id="0" mimeType="video/webm" codecs="vp9" bitstreamSwitching="true" subsegmentAlignment="true" subsegmentStartsWithSAP="1">
+<Representation id="0" bandwidth="177102" width="160" height="90">
 <BaseURL>160x90_250k.webm</BaseURL>
 <SegmentBase
-  indexRange="398208-398274">
+  indexRange="356810-356895">
 <Initialization
-  range="0-785" />
+  range="0-776" />
 </SegmentBase>
 </Representation>
 <Representation id="1" bandwidth="379672" width="320" height="180">

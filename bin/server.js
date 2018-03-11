@@ -16,6 +16,7 @@ const resolve_file_path = (video_id, filename) => path.join(__dirname, "..", "vi
 const resolve_content_type = (filename) => filename === "audio.webm" ? "audio/webm" : "video/webm";
 
 app.get("/:video_id/manifest.mpd", (req, res) => res.sendFile(resolve_file_path(req.params["video_id"], "manifest.mpd")));
+app.get("/:video_id/timestamps/:filename", (req, res) => res.sendFile(resolve_file_path(req.params["video_id"], `timestamps/${req.params["filename"]}`)));
 
 app.get("/:video_id/:filename", (req, res) => {
 	let file_path = resolve_file_path(req.params["video_id"], req.params["filename"]);
