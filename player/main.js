@@ -86,16 +86,19 @@ class Player {
 		let { timestamp_info } = videoRepresentation;
 
 		if (this.videoMediaIndex < timestamp_info["media"].length) {
-			fetch(videoRepresentation["url"], {
-				headers: {
-					range: `bytes=${createByteRangeString(timestamp_info["media"][this.videoMediaIndex])}`
-				}
-			})
-			.then((response) => {
-				var reader = response.body.getReader();
-				this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
-					this.videoMediaIndex++;
-					this.fetchVideoNextTimeSlice();
+			this._throttleQualityOnFeedback((finish) => {
+				fetch(videoRepresentation["url"], {
+					headers: {
+						range: `bytes=${createByteRangeString(timestamp_info["media"][this.videoMediaIndex])}`
+					}
+				})
+				.then((response) => {
+					var reader = response.body.getReader();
+					this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
+						this.videoMediaIndex++;
+						finish();
+						this.fetchVideoNextTimeSlice();
+					});
 				});
 			});
 		}
@@ -107,17 +110,20 @@ class Player {
 		let { timestamp_info } = videoRepresentation;
 
 		return new Promise((resolveFetchVideoInit, rejectFetchVideoInit) => {
-			fetch(videoRepresentation["url"], {
-				headers: {
-					range: `bytes=0-${this._calculateByteRangeEnd(timestamp_info["media"][this.videoMediaIndex])}`
-				}
-			})
-			.then((response) => {
-				var reader = response.body.getReader();
+			this._throttleQualityOnFeedback((finish) => {
+				fetch(videoRepresentation["url"], {
+					headers: {
+						range: `bytes=0-${calculateByteRangeEnd(timestamp_info["media"][this.videoMediaIndex])}`
+					}
+				})
+				.then((response) => {
+					var reader = response.body.getReader();
 
-				this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
-					this.videoMediaIndex++;
-					return resolveFetchVideoInit();
+					this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
+						this.videoMediaIndex++;
+						finish();
+						return resolveFetchVideoInit();
+					});
 				});
 			});
 		});
@@ -135,12 +141,41 @@ class Player {
 		});
 	}
 
-	_byteRangeString({ offset, size }) {
-		return `${offset}-${this._calculateByteRangeEnd(...arguments)}`;
+	// Improves quality (if possible) if time to fetch information < 20% of buffer duration decreases (if possible) if greater than 60%
+	_throttleQualityOnFeedback(fetchCall) {
+		let bufferDuration = this._calcDuration();
+		let startTime = Date.now();
+		fetchCall(() => {
+			let endTime = Date.now();
+
+			console.log(`Time elapsed: ${endTime - startTime} and bufferDuration = ${bufferDuration}`);
+			let fetchDuration = endTime - startTime;
+			let maxQualityIndex = this.videoSets["representations"].length - 1;
+			let lowestQualityIndex = 0;
+
+			if (fetchDuration < 0.2 * bufferDuration && this.videoQualityIndex !== maxQualityIndex) {
+				this.videoQualityIndex++;
+				console.log("Incremented Quality index");
+			}
+
+			if (fetchDuration > 0.6 * bufferDuration && this.videoQualityIndex !== lowestQualityIndex) {
+				this.videoQualityIndex--;
+				console.log("Decremented Quality index");
+			}
+		});
 	}
 
-	_calculateByteRangeEnd({ offset, size }) {
-		return size + offset - 1;
+	_calcDuration() {
+		let videoRepresentation = this.videoSets["representations"][this.videoQualityIndex];
+		let { timestamp_info } = videoRepresentation;
+		let startTimeCode = timestamp_info["media"][this.videoMediaIndex]["timecode"];
+
+		if (this.videoMediaIndex === timestamp_info["media"].length - 1) {
+			return timestamp_info["duration"] - (1000 * startTimeCode);
+		} else {
+			let nextTimeCode = timestamp_info["media"][this.videoMediaIndex + 1]["timecode"];
+			return 1000 * (nextTimeCode - startTimeCode);
+		}
 	}
 };
 
