@@ -2,7 +2,7 @@ const Queue = require("./queue");
 const ManifestParser = require("./manifest-parser");
 const { calculateByteRangeEnd, createByteRangeString } = require("./util");
 
-const video_id = "seyeon"; // hardcoded for now
+const video_id = "palette"; // hardcoded for now
 
 class Player {
 	constructor(video_id) {
@@ -23,18 +23,19 @@ class Player {
 
 	appendBufFromQueue(srcBuffer, queue) {
 		queue.pipingToSourceBuffer = true;
-		let buf = queue.popFirst();
 
-		return Boolean(buf) && (srcBuffer.appendBuffer(buf) || true);
+		return !queue.empty() && (srcBuffer.appendBuffer(queue.popFirst()) || true);
 	}
 
 	readData(reader, bufferQueue, sourceBuffer, callback = () => {}) {
 		reader.read()
 		.then((buffer) => {
-			bufferQueue.push(buffer.value);
-			if(!bufferQueue.pipingToSourceBuffer) {
-				console.log("called: ", sourceBuffer, bufferQueue.pipingToSourceBuffer);
-				this.appendBufFromQueue(sourceBuffer, bufferQueue);
+			if (buffer.value) {
+				bufferQueue.push(buffer.value);
+				if(!bufferQueue.pipingToSourceBuffer) {
+					console.log("called: ", sourceBuffer, bufferQueue.pipingToSourceBuffer);
+					this.appendBufFromQueue(sourceBuffer, bufferQueue);
+				}	
 			}
 
 			if(!buffer.done) {

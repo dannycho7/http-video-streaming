@@ -5,7 +5,15 @@ class Queue {
 	}
 
 	push(el) {
-		this.data.push(el)
+		if (!el) {
+			throw new Error("Cannot push falsey values to queue");
+		}
+
+		this.data.push(el);
+	}
+
+	empty() {
+		return this.data.length === 0;
 	}
 
 	popFirst() {
