@@ -142,7 +142,7 @@ class Player {
 		});
 	}
 
-	// Improves quality (if possible) if time to fetch information < 20% of buffer duration decreases (if possible) if greater than 60%
+	// Improves quality (if possible) if time to fetch information < 50% of buffer duration decreases (if possible) if greater than 75%
 	_throttleQualityOnFeedback(fetchCall) {
 		let bufferDuration = this._calcDuration();
 		let startTime = Date.now();
@@ -154,12 +154,12 @@ class Player {
 			let maxQualityIndex = this.videoSets["representations"].length - 1;
 			let lowestQualityIndex = 0;
 
-			if (fetchDuration < 0.2 * bufferDuration && this.videoQualityIndex !== maxQualityIndex) {
+			if (fetchDuration < 0.5 * bufferDuration && this.videoQualityIndex !== maxQualityIndex) {
 				this.videoQualityIndex++;
 				console.log("Incremented Quality index");
 			}
 
-			if (fetchDuration > 0.6 * bufferDuration && this.videoQualityIndex !== lowestQualityIndex) {
+			if (fetchDuration > 0.75 * bufferDuration && this.videoQualityIndex !== lowestQualityIndex) {
 				this.videoQualityIndex--;
 				console.log("Decremented Quality index");
 			}
