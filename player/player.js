@@ -2,8 +2,6 @@ const Queue = require("./queue");
 const ManifestParser = require("./manifest-parser");
 const { calculateByteRangeEnd, createByteRangeString } = require("./util");
 
-const video_id = "palette"; // hardcoded for now
-
 class Player {
 	constructor(video_id) {
 		this.mse = new (window.MediaSource || window.WebKitMediaSource());
@@ -219,9 +217,4 @@ class Player {
 	}
 };
 
-const player = new Player(video_id);
-window.player = player;
-
-const playerElement = document.getElementById("videoPlayer");
-playerElement.addEventListener("error", (err) => console.log(err));
-playerElement.src = player.objectUrl;
+module.exports = Player;

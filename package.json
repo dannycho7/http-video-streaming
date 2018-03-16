@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run build-player && node bin/server.js",
-    "build-player": "browserify player/main.js -o public/player-bundle.js"
+    "build-player": "browserify player/index.js -o public/player-bundle.js"
   },
   "repository": {
     "type": "git",
