@@ -1,6 +1,7 @@
 class ManifestParser {
 	constructor(video_id) {
 		this.video_id = video_id;
+		this.base_video_url = "/watch";
 	}
 
 	adaptationSetToJSON(adaptationSet) {
@@ -18,10 +19,10 @@ class ManifestParser {
 		for (let i = 0; i < representations.length; i++) {
 			let representationObj = {};
 			adaptSetObj.representations[i] = representationObj;
-			representationObj["url"] = `/${this.video_id}/${this.getUrl(representations[i])}`;
+			representationObj["url"] = `${this.base_video_url}/${this.video_id}/${this.getUrl(representations[i])}`;
 
 			let timestampPromise = new Promise((res, rej) => {
-				fetch(`/${this.video_id}/timestamps/${this.getUrl(representations[i])}.json`)
+				fetch(`${this.base_video_url}/${this.video_id}/timestamps/${this.getUrl(representations[i])}.json`)
 				.then((response) => response.json())
 				.then((timestamp_info) => {
 					representationObj["timestamp_info"] = timestamp_info;
@@ -47,7 +48,7 @@ class ManifestParser {
 
 	getJSONManifest() {
 		return new Promise((resolve, reject) => {
-			fetch(`/${this.video_id}/manifest.mpd`)
+			fetch(`${this.base_video_url}/${this.video_id}/manifest.mpd`)
 			.then((response) => response.text())
 			.then((manifest_str) => (new window.DOMParser()).parseFromString(manifest_str, "text/xml"))
 			.then((manifest) => {
