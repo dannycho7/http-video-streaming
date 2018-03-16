@@ -1,6 +1,6 @@
 const Queue = require("./queue");
 const ManifestParser = require("./manifest-parser");
-const { calculateByteRangeEnd, createByteRangeString } = require("./util");
+const { calculateByteRangeEnd, createByteRangeString, RetryTimer } = require("./util");
 
 class Player {
 	constructor(video_id) {
@@ -13,6 +13,8 @@ class Player {
 		this.videoMediaIndex = 0;
 		this.videoQualityIndex = 0;
 		this.videoBytesInSourceBuffer = 0;
+
+		this.retryTimer = new RetryTimer();
 
 		this.mse.addEventListener("sourceopen", () => {
 			console.log("Source Opened");
@@ -105,6 +107,7 @@ class Player {
 					}
 				})
 				.then((response) => {
+					this.retryTimer.reset();
 					let reader = response.body.getReader();
 					let bindedFetch = this.fetchVideoNextTimeSlice.bind(this);
 					let handleReadData = this.handleReadDataFinish(finish, bindedFetch, () => this.retryRequest(bindedFetch));
@@ -131,6 +134,7 @@ class Player {
 					}
 				})
 				.then((response) => {
+					this.retryTimer.reset();
 					let reader = response.body.getReader();
 					let handleReadData = this.handleReadDataFinish(finish, resolveFetchVideoInit, rejectFetchVideoInit);
 
@@ -151,6 +155,7 @@ class Player {
 			}
 		})
 		.then((response) => {
+			this.retryTimer.reset();
 			var reader = response.body.getReader();
 			this.readData(reader, this.audioQueue, this.audioSourceBuffer, (err) => {
 				if (err) return this.fetchAudio();
@@ -176,7 +181,9 @@ class Player {
 	}
 
 	retryRequest(requestCall) {
-		setTimeout(requestCall, 1000);
+		console.log(`Retrying request in ${this.retryTimer.time}`);
+		setTimeout(requestCall, this.retryTimer.time);
+		this.retryTimer.increase();
 	}
 
 	// Improves quality (if possible) if time to fetch information < 50% of buffer duration decreases (if possible) if greater than 75%
