@@ -3,6 +3,7 @@ const path = require("path");
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 5000;
+var video_list = null;
 
 app.set("view engine", "ejs");
 
@@ -17,8 +18,21 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 const resolve_file_path = (video_id, filename) => path.join(__dirname, "..", "videos", video_id, filename);
 const resolve_content_type = (filename) => filename === "audio.webm" ? "audio/webm" : "video/webm";
 
+app.get("/", (req, res) => {
+	if (!video_list) {
+		let video_mnt_path = path.join(__dirname, "..", "videos");
+		let folders = fs.readdirSync(video_mnt_path).filter((name) => {
+			return fs.lstatSync(path.join(video_mnt_path, name)).isDirectory();
+		});
+		video_list = folders;
+	}
+
+	res.locals.video_list = video_list;
+	res.render("index")
+});
+
 app.get("/watch/:video_id", (req, res) => {
-	fs.stat(path.join("videos", req.params["video_id"]), (err, stats) => {
+	fs.stat(path.join(__dirname, "..", "videos", req.params["video_id"]), (err, stats) => {
 		if (err || !stats.isDirectory()) {
 			console.log(err);
 			return res.redirect("/");
