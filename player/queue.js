@@ -2,14 +2,20 @@ class Queue {
 	constructor() {
 		this.data = [];
 		this.pipingToSourceBuffer = false;
+		this.numBytesWrittenInSegment = 0;
 	}
 
-	push(el) {
-		if (!el) {
+	push(buf) {
+		if (!buf) {
 			throw new Error("Cannot push falsey values to queue");
 		}
 
-		this.data.push(el);
+		this.data.push(buf);
+		this.numBytesWrittenInSegment += buf.length
+	}
+
+	resetByteCounter() {
+		this.numBytesWrittenInSegment = 0;
 	}
 
 	empty() {

@@ -8,13 +8,18 @@ class Player {
 	constructor(video_id) {
 		this.mse = new (window.MediaSource || window.WebKitMediaSource());
 		this.video_id = video_id;
+		this.initialized = false;
 		this.audioQueue = new Queue();
 		this.videoQueue = new Queue();
 
 		this.videoMediaIndex = 0;
 		this.videoQualityIndex = 0;
+		this.videoBytesInSourceBuffer = 0;
 
-		this.mse.addEventListener("sourceopen", this.init.bind(this));
+		this.mse.addEventListener("sourceopen", () => {
+			console.log("Source Opened");
+			this.init.bind(this)();
+		});
 	}
 
 	get objectUrl() {
@@ -43,10 +48,14 @@ class Player {
 			} else {
 				callback();
 			}
-		});
+		})
+		.catch((err) => callback(err));
 	}
 
 	init() {
+		if (this.initialized) return;
+		this.initialized = true;
+
 		(new ManifestParser(this.video_id)).getJSONManifest()
 		.then((adaptSetsObj) => {
 			this.videoSets = adaptSetsObj["video/webm"];
@@ -79,6 +88,10 @@ class Player {
 		this.fetchVideoInit()
 		.then(() => {
 			this.fetchVideoNextTimeSlice();
+		})
+		.catch((err) => {
+			console.log(`Error thrown in init: ${err}`);
+			this.retryRequest(this.fetchVideoAdaptive.bind(this));
 		});
 	}
 
@@ -90,16 +103,18 @@ class Player {
 			this._throttleQualityOnFeedback((finish) => {
 				fetch(videoRepresentation["url"], {
 					headers: {
-						range: `bytes=${createByteRangeString(timestamp_info["media"][this.videoMediaIndex])}`
+						range: `bytes=${createByteRangeString(this.videoQueue.numBytesWrittenInSegment, timestamp_info["media"][this.videoMediaIndex])}`
 					}
 				})
 				.then((response) => {
-					var reader = response.body.getReader();
-					this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
-						this.videoMediaIndex++;
-						finish();
-						this.fetchVideoNextTimeSlice();
-					});
+					let reader = response.body.getReader();
+					let bindedFetch = this.fetchVideoNextTimeSlice.bind(this);
+					let handleReadData = this.handleReadDataFinish(finish, bindedFetch, () => this.retryRequest(bindedFetch));
+
+					this.readData(reader, this.videoQueue, this.videoSourceBuffer, handleReadData);
+				})
+				.catch((err) => {
+					this.retryRequest(this.fetchVideoNextTimeSlice.bind(this));
 				});
 			});
 		}
@@ -114,17 +129,18 @@ class Player {
 			this._throttleQualityOnFeedback((finish) => {
 				fetch(videoRepresentation["url"], {
 					headers: {
-						range: `bytes=0-${calculateByteRangeEnd(timestamp_info["media"][this.videoMediaIndex])}`
+						range: `bytes=${this.videoQueue.numBytesWrittenInSegment}-${calculateByteRangeEnd(timestamp_info["media"][this.videoMediaIndex])}`
 					}
 				})
 				.then((response) => {
-					var reader = response.body.getReader();
+					let reader = response.body.getReader();
+					let handleReadData = this.handleReadDataFinish(finish, resolveFetchVideoInit, rejectFetchVideoInit);
 
-					this.readData(reader, this.videoQueue, this.videoSourceBuffer, () => {
-						this.videoMediaIndex++;
-						finish();
-						return resolveFetchVideoInit();
-					});
+					this.readData(reader, this.videoQueue, this.videoSourceBuffer, handleReadData);
+				})
+				.catch((err) => {
+					console.log(`Error in fetchVideoInit promise ${err}`);
+					rejectFetchVideoInit(new Error("Propagate up"));
 				});
 			});
 		});
@@ -133,13 +149,36 @@ class Player {
 	fetchAudio() {
 		fetch(this.audioSets["representations"][0]["url"], {
 			headers: {
-				range: "bytes=0-"
+				range: `bytes=${this.audioQueue.numBytesWrittenInSegment}-`
 			}
 		})
 		.then((response) => {
 			var reader = response.body.getReader();
-			this.readData(reader, this.audioQueue, this.audioSourceBuffer);
+			this.readData(reader, this.audioQueue, this.audioSourceBuffer, (err) => {
+				if (err) return this.fetchAudio();
+			});
+		})
+		.catch((err) => {
+			this.retryRequest(this.fetchAudio.bind(this));
 		});
+	}
+
+	handleReadDataFinish(finishForThrottle, nextAction, retryRequestCall) {
+		return (err) => {
+			if (err) {
+				console.log("Retrying in video init");
+				return retryRequestCall();
+			}
+
+			this.videoMediaIndex++;
+			this.videoQueue.resetByteCounter();
+			finishForThrottle();
+			nextAction();
+		}
+	}
+
+	retryRequest(requestCall) {
+		setTimeout(requestCall, 1000);
 	}
 
 	// Improves quality (if possible) if time to fetch information < 50% of buffer duration decreases (if possible) if greater than 75%
@@ -181,6 +220,7 @@ class Player {
 };
 
 const player = new Player(video_id);
+window.player = player;
 
 const playerElement = document.getElementById("videoPlayer");
 playerElement.addEventListener("error", (err) => console.log(err));

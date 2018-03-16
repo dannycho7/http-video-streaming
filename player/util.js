@@ -4,8 +4,8 @@ const calculateByteRangeEnd = ({ offset, size }) => {
 	return size + offset - 1;
 }
 
-const createByteRangeString = ({ offset, size }) => {
-	return `${offset}-${calculateByteRangeEnd({ offset, size })}`;
+const createByteRangeString = (numBytesWrittenInSegment, { offset, size }) => {
+	return `${numBytesWrittenInSegment + offset}-${calculateByteRangeEnd({ offset, size })}`;
 }
 
 module.exports.calculateByteRangeEnd = calculateByteRangeEnd;
