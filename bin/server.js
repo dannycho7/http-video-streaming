@@ -4,6 +4,8 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set("view engine", "ejs");
+
 app.use((req, res, next) => {
 	console.log("Request: ", req.url);
 	console.log("Received request w/ headers:", req.headers);
@@ -14,6 +16,18 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 const resolve_file_path = (video_id, filename) => path.join(__dirname, "..", "videos", video_id, filename);
 const resolve_content_type = (filename) => filename === "audio.webm" ? "audio/webm" : "video/webm";
+
+app.get("/watch/:video_id", (req, res) => {
+	fs.stat(path.join("videos", req.params["video_id"]), (err, stats) => {
+		if (err || !stats.isDirectory()) {
+			console.log(err);
+			return res.redirect("/");
+		}
+
+		res.locals.video_id = req.params["video_id"];
+		res.render("player");
+	});
+});
 
 app.get("/watch/:video_id/manifest.mpd", (req, res) => {
 	res.sendFile(resolve_file_path(req.params["video_id"], "manifest.mpd"));

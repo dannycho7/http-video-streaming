@@ -21,6 +21,7 @@
   "homepage": "https://github.com/dannycho7/http-video-streaming#readme",
   "dependencies": {
     "browserify": "^16.1.1",
+    "ejs": "^2.5.7",
     "express": "^4.16.2"
   }
 }
