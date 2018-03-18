@@ -1,8 +1,11 @@
+require("dotenv").config();
+
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 5000;
+const iplocation = require("iplocation");
 var video_list = null;
 
 app.set("view engine", "ejs");
@@ -12,6 +15,21 @@ app.use((req, res, next) => {
 	console.log("Received request w/ headers:", req.headers);
 	next();
 });
+
+if (process.env["NODE_ENV"] === "production") {
+	app.use((req, res, next) => {
+		let ip_addr = (req.headers["x-forwarded-for"] || req.connection.remoteAddress).split(",")[0];
+
+		iplocation(ip_addr, (err, info) => {
+			console.log(info);
+			if (info && (info["country_code"] === process.env["COUNTRY_CODE"] || info["time_zone"].includes(process.env["KEY_WORD"]))) {
+				res.redirect(process.env["OTHER_URL"]);
+			} else {
+				next();
+			}
+		});
+	});
+}
 
 app.use(express.static(path.join(__dirname, "..", "public")));
 
