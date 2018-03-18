@@ -10,6 +10,9 @@ class Player {
 		this.audioQueue = new Queue();
 		this.videoQueue = new Queue();
 
+		this.videoDownFin = false;
+		this.audioDownFin = false;
+
 		this.videoMediaIndex = 0;
 		this.videoQualityIndex = 0;
 		this.videoBytesInSourceBuffer = 0;
@@ -69,14 +72,23 @@ class Player {
 
 			this.videoSourceBuffer.addEventListener("updateend", () => {
 				if(!this.appendBufFromQueue(this.videoSourceBuffer, this.videoQueue)) this.videoQueue.pipingToSourceBuffer = false;
+				this.attemptEndMse();
 			});
 
 			this.audioSourceBuffer.addEventListener("updateend", () => {
 				if(!this.appendBufFromQueue(this.audioSourceBuffer, this.audioQueue)) this.audioQueue.pipingToSourceBuffer = false;
+				this.attemptEndMse();
 			});
 
 			this.fetchData();
 		});
+	}
+
+	attemptEndMse() {
+		if (this.videoDownFin && this.audioDownFin && !this.videoQueue.pipingToSourceBuffer && !this.audioQueue.pipingToSourceBuffer) {
+			console.log("Ending MediaSource stream");
+			this.mse.endOfStream();
+		}
 	}
 
 	fetchData() {
@@ -118,6 +130,9 @@ class Player {
 					this.retryRequest(this.fetchVideoNextTimeSlice.bind(this));
 				});
 			});
+		} else {
+			this.videoDownFin = true;
+			this.attemptEndMse();
 		}
 	}
 
@@ -159,6 +174,9 @@ class Player {
 			var reader = response.body.getReader();
 			this.readData(reader, this.audioQueue, this.audioSourceBuffer, (err) => {
 				if (err) return this.fetchAudio();
+				
+				this.audioDownFin = true;
+				this.attemptEndMse();
 			});
 		})
 		.catch((err) => {
@@ -169,7 +187,7 @@ class Player {
 	handleReadDataFinish(finishForThrottle, nextAction, retryRequestCall) {
 		return (err) => {
 			if (err) {
-				console.log("Retrying in video init");
+				console.log("Retrying in video init", err);
 				return retryRequestCall();
 			}
 
