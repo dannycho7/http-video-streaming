@@ -1,6 +1,6 @@
 #! /bin/bash
 
-EXEC_NAME=$( dirname $0 )"/ffmpeg.exe"
+EXEC_NAME=$( dirname $0 )"/ffmpeg"
 EXEC_JSON_MANIFEST=$( dirname $0 )"/mse_json_manifest"
 FILE_PATH=$1
 OUTPUT_PATH_PREFIX=$2

@@ -20,6 +20,8 @@ npm start
 
 You will now be able to find the application at `localhost:5000`.
 
+In order to create the video partitions and DASH metadata via `bin/generate_dash.sh`, you will need to install ffmpeg and mse_json_manifest. You can install ffmpeg at https://www.ffmpeg.org/download.html and mse_json_manifest at https://github.com/acolwell/mse-tools.
+
 ## Directory Structure
 
 ### bin/
